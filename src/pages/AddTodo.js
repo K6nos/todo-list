@@ -5,13 +5,12 @@ import { useNavigate } from 'react-router-dom';
 
 function AddTodo() {
   const [text, setText] = useState('');
-  const [dueDate, setDueDate] = useState(''); // 期限用のstateを追加
+  const [dueDate, setDueDate] = useState('');
   const navigate = useNavigate();
 
   const handleAdd = async () => {
     if (!text.trim()) return;
 
-    // 期限の入力があればFirebaseのTimestampに変換
     const dueDateTimestamp = dueDate ? Timestamp.fromDate(new Date(dueDate)) : null;
 
     await addDoc(collection(db, 'todo'), {
@@ -25,28 +24,35 @@ function AddTodo() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded shadow-md">
-      <h2 className="text-2xl font-semibold mb-6 text-center text-gray-800">タスクを追加</h2>
-      <div className="flex flex-col gap-4">
+    <div className="max-w-lg mx-auto mt-16 bg-white rounded-lg shadow-lg p-8">
+      <h2 className="text-3xl font-extrabold text-center text-gray-900 mb-8">
+        タスクを追加
+      </h2>
+      <div className="space-y-6">
         <input
           type="text"
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="タスクを入力"
-          className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          placeholder="タスクを入力してください"
+          className="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-400 focus:border-blue-600 text-lg transition"
         />
-        <label className="flex flex-col text-gray-700">
+
+        <label className="block text-gray-700 font-medium">
           期限（任意）
           <input
             type="date"
             value={dueDate}
             onChange={e => setDueDate(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 mt-1"
+            className="mt-2 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-400 focus:border-blue-600 text-base transition"
           />
         </label>
+
         <button
           onClick={handleAdd}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded transition-colors duration-200"
+          disabled={!text.trim()}
+          className={`w-full py-3 rounded-lg text-white font-semibold text-lg
+            transition-colors duration-300
+            ${text.trim() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300 cursor-not-allowed'}`}
         >
           追加
         </button>
