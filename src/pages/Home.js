@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { FaCheckCircle, FaTrash } from 'react-icons/fa';
+import { FaCheckCircle, FaTrash, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 
 function Home() {
   const [todos, setTodos] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [editText, setEditText] = useState('');
 
-  // Firestoreから未完了のデータ取得 + 自動削除処理
   const fetchTodos = async () => {
     const todoCol = collection(db, 'todo');
     const snapshot = await getDocs(todoCol);
@@ -14,12 +15,8 @@ function Home() {
 
     const list = await Promise.all(snapshot.docs.map(async docSnap => {
       const data = docSnap.data();
-      const todo = {
-        id: docSnap.id,
-        ...data,
-      };
+      const todo = { id: docSnap.id, ...data };
 
-      // 完了済みかつ24時間以上経過 → 削除
       if (data.completed && data.completedAt?.toDate) {
         const completedAt = data.completedAt.toDate();
         const timeDiff = now - completedAt;
@@ -33,16 +30,13 @@ function Home() {
       return todo;
     }));
 
-    // 未完了だけ表示
-    const filtered = list.filter(todo => todo && !todo.completed);
-    setTodos(filtered);
+    setTodos(list.filter(todo => todo && !todo.completed));
   };
 
   useEffect(() => {
     fetchTodos();
   }, []);
 
-  // 完了に変更 + 完了時刻を記録
   const toggleComplete = async (todo) => {
     const todoRef = doc(db, 'todo', todo.id);
     await updateDoc(todoRef, {
@@ -52,9 +46,28 @@ function Home() {
     fetchTodos();
   };
 
-  // 手動削除
   const handleDelete = async (todo) => {
     await deleteDoc(doc(db, 'todo', todo.id));
+    fetchTodos();
+  };
+
+  const startEdit = (todo) => {
+    setEditId(todo.id);
+    setEditText(todo.text);
+  };
+
+  const cancelEdit = () => {
+    setEditId(null);
+    setEditText('');
+  };
+
+  const saveEdit = async (todo) => {
+    const todoRef = doc(db, 'todo', todo.id);
+    await updateDoc(todoRef, {
+      text: editText,
+    });
+    setEditId(null);
+    setEditText('');
     fetchTodos();
   };
 
@@ -69,40 +82,56 @@ function Home() {
           {todos.map(todo => (
             <li
               key={todo.id}
-              className="mb-4 p-4 bg-white rounded-lg border shadow transition-transform duration-200 ease-in-out transform hover:-translate-y-1 hover:shadow-lg flex justify-between items-center"
+              className="mb-4 p-4 bg-white rounded-lg border shadow transition-transform transform hover:-translate-y-1 hover:shadow-lg flex justify-between items-center"
             >
-              <div>
-                <div className="text-lg">{todo.text}</div>
+              <div className="flex-1">
+                {editId === todo.id ? (
+                  <>
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="text-lg w-full border px-2 py-1 rounded"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="text-lg">{todo.text}</div>
+                  </>
+                )}
                 <div className="text-sm text-gray-500">
                   登録日時:{' '}
-                  {todo.time && typeof todo.time.toDate === 'function'
-                    ? todo.time.toDate().toLocaleString()
-                    : '日時なし'}
+                  {todo.time?.toDate?.() ? todo.time.toDate().toLocaleString() : '日時なし'}
                 </div>
                 <div className="text-sm text-gray-500">
                   期限:{' '}
-                  {todo.dueDate && typeof todo.dueDate.toDate === 'function'
-                    ? todo.dueDate.toDate().toLocaleDateString()
-                    : 'なし'}
+                  {todo.dueDate?.toDate?.() ? todo.dueDate.toDate().toLocaleDateString() : 'なし'}
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => toggleComplete(todo)}
-                  className="focus:outline-none"
-                  title="完了"
-                >
-                  <FaCheckCircle
-                    className="w-6 h-6 text-gray-400 hover:text-green-500 transition-transform transform hover:scale-110"
-                  />
-                </button>
-                <button
-                  onClick={() => handleDelete(todo)}
-                  className="focus:outline-none"
-                  title="削除"
-                >
-                  <FaTrash className="w-6 h-6 text-red-500 hover:text-red-700" />
-                </button>
+
+              <div className="flex items-center space-x-3 ml-4">
+                {editId === todo.id ? (
+                  <>
+                    <button onClick={() => saveEdit(todo)} title="保存">
+                      <FaSave className="w-6 h-6 text-blue-500 hover:text-blue-700" />
+                    </button>
+                    <button onClick={cancelEdit} title="キャンセル">
+                      <FaTimes className="w-6 h-6 text-gray-400 hover:text-gray-600" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => startEdit(todo)} title="編集">
+                      <FaEdit className="w-6 h-6 text-gray-500 hover:text-blue-500" />
+                    </button>
+                    <button onClick={() => toggleComplete(todo)} title="完了">
+                      <FaCheckCircle className="w-6 h-6 text-gray-400 hover:text-green-500" />
+                    </button>
+                    <button onClick={() => handleDelete(todo)} title="削除">
+                      <FaTrash className="w-6 h-6 text-red-500 hover:text-red-700" />
+                    </button>
+                  </>
+                )}
               </div>
             </li>
           ))}
